@@ -85,7 +85,7 @@ const FLAG_CODES: Record<string, string> = {
   ENG: "gb-eng", CRO: "hr", GHA: "gh", PAN: "pa",
 };
 
-const STEPS = ["Groupes", "Meilleurs 3es", "16es", "8es", "Quarts", "Demies", "Finale", "Validation", "Résultats"];
+const STEPS = ["Groupes", "Meilleurs 3es", "16es", "8es", "Quarts", "Demies", "Finale", "Validation"];
 
 function initialRankings(): Rankings {
   return Object.fromEntries(GROUPS.map((group) => [group.id, group.teams])) as Rankings;
@@ -139,7 +139,7 @@ function buildNextRound(matches: Match[], nextRound: string) {
 
 export default function App() {
   const [step, setStep] = useState(0);
-  const [appMode, setAppMode] = useState<"prediction" | "admin">("prediction");
+  const [appMode, setAppMode] = useState<"prediction" | "admin" | "results">("prediction");
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
   const [rankings, setRankings] = useState<Rankings>(initialRankings);
   const [thirdRankingIds, setThirdRankingIds] = useState<string[]>([]);
@@ -149,6 +149,7 @@ export default function App() {
   const [scores, setScores] = useState<PlayerScore[]>([]);
   const [scoresLoading, setScoresLoading] = useState(false);
   const [scoresError, setScoresError] = useState<string | null>(null);
+  const [adminPressTimer, setAdminPressTimer] = useState<number | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const currentGroup = GROUPS[currentGroupIndex];
@@ -333,12 +334,44 @@ export default function App() {
     alert("Résultats réels sauvegardés !");
   }
 
+  function unlockAdmin() {
+    const password = window.prompt("Mot de passe admin");
+
+    if (password === "Railton") {
+      setAppMode("admin");
+      setStep(0);
+      setCurrentGroupIndex(0);
+      alert("Mode admin activé.");
+    } else {
+      alert("Mot de passe incorrect.");
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-slate-100/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl flex-col items-center px-4 py-6 text-center">
-          <div className="mb-3 rounded-3xl bg-slate-200 p-3 shadow-lg">
+          <div
+            className="mb-3 cursor-pointer rounded-3xl bg-white/10 p-3 shadow-lg select-none"
+            onMouseDown={() => {
+              const timer = window.setTimeout(unlockAdmin, 3000);
+              setAdminPressTimer(timer);
+            }}
+            onMouseUp={() => {
+              if (adminPressTimer) window.clearTimeout(adminPressTimer);
+            }}
+            onMouseLeave={() => {
+              if (adminPressTimer) window.clearTimeout(adminPressTimer);
+            }}
+            onTouchStart={() => {
+              const timer = window.setTimeout(unlockAdmin, 3000);
+              setAdminPressTimer(timer);
+            }}
+            onTouchEnd={() => {
+              if (adminPressTimer) window.clearTimeout(adminPressTimer);
+            }}
+          >
             <Trophy className="h-7 w-7" />
           </div>
           <h1 className="text-2xl font-black tracking-tight md:text-3xl">
@@ -363,16 +396,16 @@ export default function App() {
 
             <button
               onClick={() => {
-                setAppMode("admin");
-                setStep(0);
-                setCurrentGroupIndex(0);
+                setAppMode("results");
+                loadScores();
               }}
-              className={appMode === "admin" ? "btn-primary" : "btn-secondary"}
+              className={appMode === "results" ? "btn-primary" : "btn-secondary"}
             >
-              Admin résultats
+              Résultats
             </button>
           </div>
 
+          {appMode !== "results" && (
           <div className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-1">
             {STEPS.filter((_, index) => appMode === "prediction" || index < 8).map((label, index) => (
               <button
@@ -385,12 +418,15 @@ export default function App() {
                 {index + 1}. {label}
               </button>
             ))}
-          </div>
+          </div>)}
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-8">
         <AnimatePresence mode="wait">
+
+          {appMode !== "results" && (
+            <>
           {step === 0 && (
             <motion.section key="groups" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
               <SectionTitle
@@ -548,8 +584,9 @@ export default function App() {
               </div>
             </motion.section>
           )}
-
-          {step === 8 && (
+          </>
+          )} 
+          {appMode === "results" && (
             <motion.section
               key="results"
               initial={{ opacity: 0, y: 12 }}
@@ -629,6 +666,7 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
 
       <style>{`
         .btn-primary {
@@ -834,6 +872,8 @@ function ScoreLine({
     );
   }
 
+
+
 function canGoNext(step: number, rounds: Rounds) {
   if (step === 2) return rounds.R32.length > 0 && rounds.R32.every((m) => m.winner);
   if (step === 3) return rounds.R16.length > 0 && rounds.R16.every((m) => m.winner);
@@ -842,3 +882,4 @@ function canGoNext(step: number, rounds: Rounds) {
   if (step === 6) return rounds.F.length > 0 && rounds.F.every((m) => m.winner);
   return true;
 }
+
