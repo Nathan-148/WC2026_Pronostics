@@ -91,11 +91,6 @@ function initialRankings(): Rankings {
   return Object.fromEntries(GROUPS.map((group) => [group.id, group.teams])) as Rankings;
 }
 
-function teamLabel(team?: Team | null) {
-  if (!team) return "À déterminer";
-  return team.name;
-}
-
 function getFlagUrl(team?: Team | null) {
   if (!team) return null;
   const code = FLAG_CODES[team.id];
@@ -410,7 +405,7 @@ export default function App() {
                 <SortableContext items={rankings[currentGroup.id].map((team) => team.id)} strategy={verticalListSortingStrategy}>
                   <div className="mx-auto mt-6 max-w-xl space-y-3">
                     {rankings[currentGroup.id].map((team, index) => (
-                      <SortableTeamRow key={team.id} id={team.id} team={team} index={index} variant="group" />
+                      <SortableTeamRow key={team.id} id={team.id} team={team} index={index} />
                     ))}
                   </div>
                 </SortableContext>
@@ -724,7 +719,7 @@ function GroupPager({ currentIndex, setCurrentIndex }: { currentIndex: number; s
   );
 }
 
-function SortableTeamRow({ id, team, index, variant }: { id: string; team: Team; index: number; variant: "group" }) {
+  function SortableTeamRow({ id, team, index }: { id: string; team: Team; index: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
